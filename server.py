@@ -20,22 +20,66 @@
 
 import socket               # Import socket module
 import _thread
+from collections import defaultdict
 
 active_sockets = []
+zone_content = defaultdict(lambda: defaultdict(list))
+zone_content['z1'] = {100 : ['300,500','400,500']}
 
 def on_new_client(clientsocket,addr):
     # print(addr, " has connected");
     print("Creating new thread")
     while True:
         msg = clientsocket.recv(1024)
-        msg = msg.decode('utf-8')
-        print(type(msg))
-        
-        # msg = msg.join
-        #do some checks and if msg == someWeirdSignal: break:
-        print (addr, ' >> ', msg)
-        # active_sockets.append(msg.split(","))
-        clientsocket.sendall(str(len(msg)).encode('utf-8'))
+        msg = msg.decode('utf-8').split(';') # 0 idx is function to call, 1 idx is zone number
+        #init;zonename
+        #return current list of ids and locations
+        if msg[0] == 'init':
+            print("init getting locations")
+            locations = ''
+            print(zone_content)
+            for key,value in zone_content.items():
+                print(key)
+                # print(value)
+                if key == msg[1]:
+                    for key2, value2 in value.items():
+                        print(value2)
+                        locations = locations + (';'.join(value2))
+                        locations = locations + ';'
+            print(locations)
+            clientsocket.sendall(locations.encode('utf-8'))
+            print('sent locations')
+
+        #updates the server with a clients location
+        #update;zonename;id_of_player;x;y
+        if msg[0] == 'updateServer':
+            msg.pop(0)
+            zone_content[msg[0]][msg[1]] = msg[2:]
+            # clientsocket.sendall("recieved!".encode('utf-8'))
+
+        #updates the client with other clients locations 
+        #check for id on client?
+        #updateClient;zonename;id_of_client
+        elif msg[0] == 'updateClient':
+            locations = ''
+            zone = msg[1]
+            id_of_client = msg[2]
+
+            for key,value in zone_content.items():
+                if key == zone:
+                    for key2, value2 in value.items():
+                        if key2 != id_of_client:
+                            locations = locations + (';'.join(value2))
+            clientsocket.sendall(locations.encode('utf-8'))
+            
+
+
+
+        # retrn = zone_content[msg[1]]
+        # retrn = ';'.join(retrn)
+        # retrn = 'hi there'
+
+        # clientsocket.sendall(retrn.encode('utf-8'))
     clientsocket.close()
 
 # s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)      # Create a socket object
@@ -45,6 +89,7 @@ port = 65432                # Reserve a port for your service.
 
 print ('Server started!')
 print ('Waiting for clients...')
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 s.bind((host, port))        # Bind to the port
 s.listen(5)                 # Now wait for client connection.
 
