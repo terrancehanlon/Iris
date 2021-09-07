@@ -24,14 +24,21 @@ from collections import defaultdict
 
 active_sockets = []
 zone_content = defaultdict(lambda: defaultdict(list))
-zone_content['z1'] = {100 : ['300,500','400,500']}
+# zone_content['z1'] = {100 : ['300,500','400,500']}
 
 def on_new_client(clientsocket,addr):
     # print(addr, " has connected");
     print("Creating new thread")
     while True:
         msg = clientsocket.recv(1024)
+        # print(msg)
         msg = msg.decode('utf-8').split(';') # 0 idx is function to call, 1 idx is zone number
+        # if msg != '':
+        #     print(msg)
+        
+        if msg[0] == 'info':
+            print(zone_content)
+        
         #init;zonename
         #return current list of ids and locations
         if msg[0] == 'init':
@@ -47,14 +54,20 @@ def on_new_client(clientsocket,addr):
                         locations = locations + (';'.join(value2))
                         locations = locations + ';'
             print(locations)
-            clientsocket.sendall(locations.encode('utf-8'))
+            if locations == '':
+                clientsocket.sendall("empty".encode('utf-8'))
+            else:
+                clientsocket.sendall(locations.encode('utf-8'))
+                
             print('sent locations')
 
         #updates the server with a clients location
         #update;zonename;id_of_player;x;y
         if msg[0] == 'updateServer':
             msg.pop(0)
-            zone_content[msg[0]][msg[1]] = msg[2:]
+            # print("updating server")
+            if zone_content[msg[0]][msg[1]] != msg[2:]:
+                zone_content[msg[0]][msg[1]] = msg[2:]
             # clientsocket.sendall("recieved!".encode('utf-8'))
 
         #updates the client with other clients locations 
@@ -70,6 +83,7 @@ def on_new_client(clientsocket,addr):
                     for key2, value2 in value.items():
                         if key2 != id_of_client:
                             locations = locations + (';'.join(value2))
+            locations = locations + ';'
             clientsocket.sendall(locations.encode('utf-8'))
             
 
