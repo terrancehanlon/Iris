@@ -24,7 +24,7 @@ from collections import defaultdict
 
 active_sockets = []
 zone_content = defaultdict(lambda: defaultdict(list))
-# zone_content['z1'] = {100 : ['300,500','400,500']}
+# zone_content['z1'] = {100 : ['1000,300,500','1000,400,500']}
 
 def on_new_client(clientsocket,addr):
     # print(addr, " has connected");
@@ -33,6 +33,8 @@ def on_new_client(clientsocket,addr):
         msg = clientsocket.recv(1024)
         # print(msg)
         msg = msg.decode('utf-8').split(';') # 0 idx is function to call, 1 idx is zone number
+        print(msg)
+        print(clientsocket)
         # if msg != '':
         #     print(msg)
         
@@ -44,11 +46,9 @@ def on_new_client(clientsocket,addr):
         if msg[0] == 'init':
             print("init getting locations")
             locations = ''
-            print(zone_content)
             for key,value in zone_content.items():
-                print(key)
                 # print(value)
-                if key == msg[1]:
+                if key == msg[1]: #look for zone
                     for key2, value2 in value.items():
                         print(value2)
                         locations = locations + (';'.join(value2))
@@ -57,23 +57,28 @@ def on_new_client(clientsocket,addr):
             if locations == '':
                 clientsocket.sendall("empty".encode('utf-8'))
             else:
-                clientsocket.sendall(locations.encode('utf-8'))
-                
+                clientsocket.sendall(locations.encode('utf-8'))                
             print('sent locations')
 
         #updates the server with a clients location
         #update;zonename;id_of_player;x;y
         if msg[0] == 'updateServer':
+            good = True
             msg.pop(0)
-            # print("updating server")
-            if zone_content[msg[0]][msg[1]] != msg[2:]:
-                zone_content[msg[0]][msg[1]] = msg[2:]
-            # clientsocket.sendall("recieved!".encode('utf-8'))
+            for x in msg:
+                if 'updateClient' in x:
+                    good = False
+            # print(msg[2:])
+            if good:
+                if zone_content[msg[0]][msg[1]] != msg[2:]:
+                    zone_content[msg[0]][msg[1]] = msg[2:]
+            clientsocket.sendall("recieved!".encode('utf-8'))
 
         #updates the client with other clients locations 
         #check for id on client?
         #updateClient;zonename;id_of_client
         elif msg[0] == 'updateClient':
+            # print('updating client')
             locations = ''
             zone = msg[1]
             id_of_client = msg[2]
@@ -84,16 +89,15 @@ def on_new_client(clientsocket,addr):
                         if key2 != id_of_client:
                             locations = locations + (';'.join(value2))
             locations = locations + ';'
-            clientsocket.sendall(locations.encode('utf-8'))
+            if locations == ';':
+                print('sending empty')
+                clientsocket.sendall('empty'.encode('utf-8'))
+            else:
+                print('locations not empty')
+                print(locations)
+                clientsocket.sendall(locations.encode('utf-8'))
             
 
-
-
-        # retrn = zone_content[msg[1]]
-        # retrn = ';'.join(retrn)
-        # retrn = 'hi there'
-
-        # clientsocket.sendall(retrn.encode('utf-8'))
     clientsocket.close()
 
 # s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)      # Create a socket object
