@@ -34,6 +34,7 @@ def on_new_client(clientsocket,addr):
             if temp_arr == []:
                 clientsocket.sendall('empty'.encode('utf-8'))
             else:
+                print(';'.join(temp_arr).encode('utf-8'))
                 clientsocket.sendall(';'.join(temp_arr).encode('utf-8'))
             
 
@@ -49,6 +50,8 @@ s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Quicker debugging beca
 
 s.bind((host, port))        
 s.listen(5)             
+
+print("Server active, accepting clients ...")
 
 while True:
     c, addr = s.accept()
